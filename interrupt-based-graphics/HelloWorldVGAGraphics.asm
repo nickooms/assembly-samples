@@ -1,23 +1,25 @@
 use16
 
-floppy_drive_number                           equ   0
+floppy_drive_number                           equ   0x00
 
-floppy_drive_reset_disk_operation             equ   0h
-floppy_drive_reset_disk_interrupt             equ   13h
+floppy_drive_reset_disk_operation             equ   0x00
+floppy_drive_reset_disk_interrupt             equ   0x13
 
 floppy_drive_read_sector_operation            equ   0x02
 floppy_drive_read_sector_interrupt            equ   0x13
 
-floppy_drive_boot_sector_address              equ   0x07C00
+floppy_drive_boot_sector_address              equ   0x7C00
 floppy_drive_boot_sector_sector_count         equ   0x01
 floppy_drive_boot_sector_cylinder_number      equ   0x00
 floppy_drive_boot_sector_head_number          equ   0x00
 floppy_drive_boot_sector_start_sector_number  equ   0x02
-floppy_drive_boot_sector_last_2_bytes         equ   0x0AA55
-floppy_drive_boot_sector_next_sector          equ   0x07E00
+floppy_drive_boot_sector_last_2_bytes         equ   0xAA55
+floppy_drive_boot_sector_next_sector          equ   0x7E00
 
-draw_pixel_operation                          equ   0x13
-draw_pixel_interrupt                          equ   0x10
+vga_interrupt                                 equ   0x10
+vga_set_mode_operation                        equ   0x00
+vga_mode_320_x_200_256_colors                 equ   0x13
+vga_draw_pixel_operation                      equ   0x0C
 
 rect_left                                     equ   80
 rect_top                                      equ   50
@@ -43,15 +45,15 @@ boot_stage_one:
 
   jmp         main
 
-pad_out_sector1_with_zeroes:
   times       ((0x0200 - 2) - ($ - $$))       db    0h
   dw          floppy_drive_boot_sector_last_2_bytes
 
 org           floppy_drive_boot_sector_next_sector
 
 main:
-  mov   ax,   draw_pixel_operation
-  int         draw_pixel_interrupt
+  mov   ah,   vga_set_mode_operation
+  mov   al,   vga_mode_320_x_200_256_colors
+  int         vga_interrupt
   mov   cx,   rect_left
   mov   dx,   rect_top
   jmp         draw_pixel
@@ -59,9 +61,9 @@ main:
 ret
 
 draw_pixel:
-  mov   ah,   0x0C
+  mov   ah,   vga_draw_pixel_operation
   mov   al,   rect_color
-  int         draw_pixel_interrupt
+  int         vga_interrupt
   cmp   cx,   rect_right
   jne         next_pixel_x
   cmp   dx,   rect_bottom
@@ -77,5 +79,4 @@ next_pixel_y:
   mov   cx,   rect_left
 jmp           draw_pixel
 
-pad_out_sector_2_with_zeroes:
-  times       ((200h) - ($ - $$))             db      0h
+  times       ((0x0200) - ($ - $$))             db      0h
