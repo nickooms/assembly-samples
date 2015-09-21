@@ -1,72 +1,81 @@
 use16
 
-FLOPPY_DRIVE_NUMBER                             equ 0
+floppy_drive_number                           equ   0
 
-FLOPPY_DRIVE_RESET_DISK_OPERATION               equ 0x00
-FLOPPY_DRIVE_RESET_DISK_INTERRUPT               equ 0x13
+floppy_drive_reset_disk_operation             equ   0h
+floppy_drive_reset_disk_interrupt             equ   13h
 
-FLOPPY_DRIVE_READ_SECTOR_OPERATION              equ 0x02
-FLOPPY_DRIVE_READ_SECTOR_INTERRUPT              equ 0x13
+floppy_drive_read_sector_operation            equ   0x02
+floppy_drive_read_sector_interrupt            equ   0x13
 
-FLOPPY_DRIVE_BOOT_SECTOR_ADDRESS                equ 0x7C00
-FLOPPY_DRIVE_BOOT_SECTOR_SECTOR_COUNT           equ 1
-FLOPPY_DRIVE_BOOT_SECTOR_CYLINDER_NUMBER        equ 0
-FLOPPY_DRIVE_BOOT_SECTOR_HEAD_NUMBER            equ 0
-FLOPPY_DRIVE_BOOT_SECTOR_START_SECTOR_NUMBER    equ 2
+floppy_drive_boot_sector_address              equ   0x07C00
+floppy_drive_boot_sector_sector_count         equ   0x01
+floppy_drive_boot_sector_cylinder_number      equ   0x00
+floppy_drive_boot_sector_head_number          equ   0x00
+floppy_drive_boot_sector_start_sector_number  equ   0x02
+floppy_drive_boot_sector_last_2_bytes         equ   0x0AA55
+floppy_drive_boot_sector_next_sector          equ   0x07E00
 
-DRAW_PIXEL_OPERATION                            equ 0x13
-DRAW_PIXEL_INTERRUPT                            equ 0x10
+draw_pixel_operation                          equ   0x13
+draw_pixel_interrupt                          equ   0x10
 
-org FLOPPY_DRIVE_BOOT_SECTOR_ADDRESS
+rect_left                                     equ   80
+rect_top                                      equ   50
+rect_right                                    equ   240
+rect_bottom                                   equ   150
+rect_color                                    equ   0x0F
 
-bootStageOne:
-    mov ah, FLOPPY_DRIVE_RESET_DISK_OPERATION
-    mov dl, FLOPPY_DRIVE_NUMBER
-    int     FLOPPY_DRIVE_RESET_DISK_INTERRUPT
+org           floppy_drive_boot_sector_address
 
-    mov ah, FLOPPY_DRIVE_READ_SECTOR_OPERATION
-    mov al, FLOPPY_DRIVE_BOOT_SECTOR_SECTOR_COUNT
-    mov dl, FLOPPY_DRIVE_NUMBER
-    mov ch, FLOPPY_DRIVE_BOOT_SECTOR_CYLINDER_NUMBER
-    mov dh, FLOPPY_DRIVE_BOOT_SECTOR_HEAD_NUMBER
-    mov cl, FLOPPY_DRIVE_BOOT_SECTOR_START_SECTOR_NUMBER
-    mov bx, main
-    int     FLOPPY_DRIVE_READ_SECTOR_INTERRUPT
+boot_stage_one:
+  mov   ah,   floppy_drive_reset_disk_operation
+  mov   dl,   floppy_drive_number
+  int         floppy_drive_reset_disk_interrupt
 
-    jmp     main
+  mov   ah,   floppy_drive_read_sector_operation
+  mov   al,   floppy_drive_boot_sector_sector_count
+  mov   dl,   floppy_drive_number
+  mov   ch,   floppy_drive_boot_sector_cylinder_number
+  mov   dh,   floppy_drive_boot_sector_head_number
+  mov   cl,   floppy_drive_boot_sector_start_sector_number
+  mov   bx,   main
+  int         floppy_drive_read_sector_interrupt
 
-padOutSector1WithZeroes: ; pad out all but last 2 bytes of the sector with zeroes
-times ((0x200 - 2) - ($ - $$)) db 0x00
-dw 0xAA55       ; these must be last 2 bytes in the boot sector
+  jmp         main
 
-org 0x7E00          ; next sector
+pad_out_sector1_with_zeroes:
+  times       ((0x0200 - 2) - ($ - $$))       db    0h
+  dw          floppy_drive_boot_sector_last_2_bytes
+
+org           floppy_drive_boot_sector_next_sector
 
 main:
-    mov ax, DRAW_PIXEL_OPERATION
-    int     DRAW_PIXEL_INTERRUPT
-    mov cx, 80
-    mov dx, 50
-    jmp     drawPixel
-    drawPixelEnd:
+  mov   ax,   draw_pixel_operation
+  int         draw_pixel_interrupt
+  mov   cx,   rect_left
+  mov   dx,   rect_top
+  jmp         draw_pixel
+  draw_pixel_end:
 ret
 
-drawPixel:
-    mov ax, 0x0C0F
-    int     0x10
-    cmp cx, 240
-    jne     nextPixelX
-    cmp dx, 150
-    jne     nextPixelY
-jmp         drawPixelEnd
+draw_pixel:
+  mov   ah,   0x0C
+  mov   al,   rect_color
+  int         draw_pixel_interrupt
+  cmp   cx,   rect_right
+  jne         next_pixel_x
+  cmp   dx,   rect_bottom
+  jne         next_pixel_y
+jmp           draw_pixel_end
 
-nextPixelX:
-    inc cx
-jmp         drawPixel
+next_pixel_x:
+  inc   cx
+jmp           draw_pixel
 
-nextPixelY:
-    inc dx
-    mov cx, 80
-jmp         drawPixel
+next_pixel_y:
+  inc   dx
+  mov   cx,   rect_left
+jmp           draw_pixel
 
-padOutSector2WithZeroes:
-times ((0x200) - ($ - $$)) db 0x00
+pad_out_sector_2_with_zeroes:
+  times       ((200h) - ($ - $$))             db      0h
